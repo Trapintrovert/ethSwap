@@ -1,11 +1,11 @@
 import React, { Component } from 'react';
 import  Web3 from 'web3'
+import EthSwap from '../abis/EthSwap.json'
+import Token from '../abis/Token.json'
 import './App.css';
 import Navbar from './Navbar';
 
 class App extends Component {
-
-
 
  async UNSAFE_componentWillMount(){
     await this.loadWeb3()
@@ -21,6 +21,37 @@ async loadBlockchainData(){
   const ethBalance = await web3.eth.getBalance(this.state.account)
   this.setState({ ethBalance })
  
+  // Load Token
+  const networkId = await web3.eth.net.getId()
+  const tokenData = Token.networks[networkId]
+
+  if(tokenData){
+    const token = new web3.eth.Contract(Token.abi, tokenData.address)
+    this.setState({ token })
+    let tokenBalance = await token.methods.balanceOf(this.state.account).call()
+
+    this.setState({ tokenBalance: tokenBalance.toString() })
+
+
+  }else{
+    window.alert('Token contract not deployed to detected network')
+  }
+
+
+   // Load EthSwap
+
+   const ethSwapData = EthSwap.networks[networkId]
+ 
+   if(ethSwapData){
+     const ethSwap = new web3.eth.Contract(EthSwap.abi, ethSwapData.address)
+     this.setState({ ethSwap })
+ 
+   }else{
+     window.alert('EthSwap contract not deployed to detected network')
+   }
+
+   console.log(this.state.ethSwap)
+
 }
 
   async loadWeb3() {
@@ -38,7 +69,10 @@ async loadBlockchainData(){
     super(props)
     this.state = {
       account: '',
-      ethBalance: 0
+      token: {},
+      ethSwap: {},
+      ethBalance: '0',
+      tokenBalance: '0'
     }
   }
 
