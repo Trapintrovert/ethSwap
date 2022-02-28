@@ -4,6 +4,7 @@ import EthSwap from '../abis/EthSwap.json'
 import Token from '../abis/Token.json'
 import './App.css';
 import Navbar from './Navbar';
+import Main from './Main';
 
 class App extends Component {
 
@@ -19,7 +20,7 @@ async loadBlockchainData(){
   this.setState({account: accounts[0]})
 
   const ethBalance = await web3.eth.getBalance(this.state.account)
-  this.setState({ ethBalance })
+  this.setState({ ethBalance:  ethBalance.toString() })
  
   // Load Token
   const networkId = await web3.eth.net.getId()
@@ -27,11 +28,13 @@ async loadBlockchainData(){
 
   if(tokenData){
     const token = new web3.eth.Contract(Token.abi, tokenData.address)
+  
     this.setState({ token })
     let tokenBalance = await token.methods.balanceOf(this.state.account).call()
 
-    this.setState({ tokenBalance: tokenBalance.toString() })
+    this.setState({ tokenBalance: tokenBalance.toString()})
 
+    // console.log(tokenBalance)
 
   }else{
     window.alert('Token contract not deployed to detected network')
@@ -50,7 +53,7 @@ async loadBlockchainData(){
      window.alert('EthSwap contract not deployed to detected network')
    }
 
-   console.log(this.state.ethSwap)
+   this.setState({ loading: false })
 
 }
 
@@ -65,6 +68,23 @@ async loadBlockchainData(){
     }
   }
 
+  buyTokens = (etherAmount) => {
+    this.setState({ loading: true})
+    this.state.ethSwap.methods.buyTokens().send({ value:etherAmount, from: this.state.account}).on('transactionHash', (hash) => {
+      this.setState({loading: false})
+  })
+  }
+
+
+   sellTokens = (tokenAmount) => {
+    this.setState({ loading: true})
+    this.state.token.methods.approve(this.state.ethSwap.address, tokenAmount).send({from: this.state.account}).on('transactionHash', (hash) => {
+      this.state.ethSwap.methods.sellTokens(tokenAmount).send({from: this.state.account}).on('transactionHash', (hash) => {
+        this.setState({loading: false})
+      })
+  })
+  }
+
   constructor(props){
     super(props)
     this.state = {
@@ -72,17 +92,31 @@ async loadBlockchainData(){
       token: {},
       ethSwap: {},
       ethBalance: '0',
-      tokenBalance: '0'
+      tokenBalance: '0',
+      loading: true
     }
   }
 
   render() {
+    let content;
+    
+    if(this.state.loading){
+      content =     <p id='loader' className='text-center'>Loading...</p>
+    }else{
+      content = <Main 
+      ethBalance={this.state.ethBalance} 
+      tokenBalance={this.state.tokenBalance}
+      buyTokens={this.buyTokens}
+      sellTokens={this.sellTokens}
+      />
+    }
+
     return (
       <div>
         <Navbar account={this.state.account}/>
         <div className="container-fluid mt-5">
           <div className="row">
-            <main role="main" className="col-lg-12 d-flex text-center">
+            <main role="main" className="col-lg-12 ml-auto mr-auto" style={{ maxWidth: '600px' }}>
               <div className="content mr-auto ml-auto">
                 <a
                   href="http://www.dappuniversity.com/bootcamp"
@@ -90,8 +124,7 @@ async loadBlockchainData(){
                   rel="noopener noreferrer"
                 >
                 </a>
-                <h1>Hello, world</h1>
-               
+                  {content}
               </div>
             </main>
           </div>
